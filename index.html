@@ -48,6 +48,7 @@
             padding: 15px;
             cursor: pointer;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
 
         .option:hover {
@@ -131,7 +132,7 @@
         }
     </style>
 </head>
-<body class="p-4">
+<body>
 <!-- Loader -->
 <div id="loader">
     <i class="fas fa-camera loader-icon text-dark"></i>
@@ -406,6 +407,9 @@
         if (window.AppInventor) {
             window.AppInventor.setWebViewString("exit");
         }
+
+        // loader
+        document.getElementById('loader').style.display = 'block';
     }
 
     nextBtn.addEventListener('click', () => {
