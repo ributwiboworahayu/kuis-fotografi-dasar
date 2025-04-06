@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Fotografi Interaktif</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+
+        .quiz-container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            margin: auto;
+        }
+
+        .quiz-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .question {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .options {
+            display: grid;
+            gap: 10px;
+        }
+
+        .option {
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:hover {
+            background-color: #e9ecef;
+        }
+
+        .option.selected {
+            background-color: #cfe2ff;
+            border-color: #0d6efd;
+        }
+
+        .option.correct {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+
+        .option.incorrect {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .quiz-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+        }
+
+        .timer {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .progress {
+            height: 10px;
+            margin-bottom: 20px;
+        }
+
+        .results {
+            text-align: center;
+        }
+
+        .result-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .score {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* Loader */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader-icon {
+            font-size: 3rem;
+            color: #0d6efd;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body class="p-4">
+<!-- Loader -->
+<div id="loader">
+    <i class="fas fa-camera loader-icon text-dark"></i>
+</div>
+
+<!-- Quiz -->
+<div class="container" style="display:none" id="main-container">
+    <div class="quiz-container" id="quiz">
+        <div class="quiz-header position-relative text-center">
+            <h2 class="mb-3">Kuis Dasar Fotografi</h2>
+
+            <!-- Progress Bar -->
+            <div class="progress mt-2">
+                <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0"
+                     aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+
+        <div id="question-container">
+            <p class="question" id="question"></p>
+            <div class="options" id="options"></div>
+        </div>
+        <div class="quiz-footer">
+            <div class="timer" id="timer">Timer: 20s</div>
+            <button id="soundToggleBtn" class="btn btn-light btn-sm"
+                    title="Toggle Sound">
+                <i id="soundIcon" class="fas fa-volume-up"></i>
+            </button>
+        </div>
+        <button class="btn btn-primary col-12 my-2" id="next-btn">Selanjutnya</button>
+    </div>
+</div>
+
+<audio id="horn-sound" src="/sounds/correct.m4a"></audio>
+<audio id="ahh-sound" src="/sounds/wrong.m4a"></audio>
+<audio id="victory-sound" src="/sounds/victory.m4a"></audio>
+
+<script>
+    // Loader
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('main-container').style.display = 'block';
+            loadQuestion();
+        }, 1200);
+    });
+
+    const originalQuizData = [
+        {
+            question: "Apa itu ISO dalam fotografi?",
+            options: ["Ukuran lensa", "Sensitivitas sensor terhadap cahaya", "Tingkat zoom kamera", "Jenis filter kamera"],
+            correct: 1
+        },
+        {
+            question: "Fungsi aperture adalah?",
+            options: ["Mengatur cahaya dan depth of field", "Mengatur ukuran file foto", "Menambah warna", "Mengubah format gambar"],
+            correct: 0
+        },
+        {
+            question: "Shutter speed yang cepat cocok untuk?",
+            options: ["Foto malam hari", "Memotret objek bergerak cepat", "Foto lanskap", "Foto bokeh"],
+            correct: 1
+        },
+        {
+            question: "Apa fungsi white balance?",
+            options: ["Menambah kontras", "Menyeimbangkan warna agar natural", "Menyesuaikan fokus", "Mengatur ISO"],
+            correct: 1
+        },
+        {
+            question: "Depth of field dipengaruhi oleh?",
+            options: ["ISO", "White Balance", "Aperture", "Shutter Speed"],
+            correct: 2
+        },
+        {
+            question: "Apa itu ISO dalam fotografi?ImAGE",
+            options: ["Ukuran lensa", "Sensitivitas sensor terhadap cahaya", "Tingkat zoom kamera", "Jenis filter kamera"],
+            correct: 1,
+            image: "https://images.unsplash.com/photo-1519183071298-a2962be90b8e?auto=format&fit=crop&w=600&q=80"
+        }
+    ];
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    const quizData = shuffle(originalQuizData.map(q => {
+        const shuffledOptions = shuffle([...q.options]);
+        return {
+            question: q.question,
+            options: shuffledOptions,
+            correct: shuffledOptions.indexOf(q.options[q.correct]),
+            image: q.image || null
+        };
+    }));
+
+    let currentQuestion = 0;
+    let score = 0;
+    let timer;
+    let timeLeft = 20;
+    let bonusTime = 0;
+    let soundEnabled = true;
+
+    const questionEl = document.getElementById('question');
+    const optionsEl = document.getElementById('options');
+    const nextBtn = document.getElementById('next-btn');
+    const timerEl = document.getElementById('timer');
+    const progressBar = document.querySelector('.progress-bar');
+    const quizContainer = document.getElementById('quiz');
+    const hornSound = document.getElementById('horn-sound');
+    const ahhSound = document.getElementById('ahh-sound');
+    const victorySound = document.getElementById('victory-sound');
+
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundIcon = document.getElementById('soundIcon');
+
+    soundToggleBtn.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        soundIcon.className = soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+    });
+
+    function loadQuestion() {
+        const question = quizData[currentQuestion];
+        questionEl.textContent = question.question;
+        optionsEl.innerHTML = '';
+
+        // Hapus gambar sebelumnya (jika ada)
+        const existingImage = document.getElementById('question-image');
+        if (existingImage) existingImage.remove();
+
+        // Jika ada gambar, tambahkan ke elemen
+        if (question.image) {
+            const img = document.createElement('img');
+            img.src = question.image;
+            img.alt = 'Gambar soal';
+            img.className = 'img-fluid rounded mb-3';
+            img.id = 'question-image';
+            questionEl.parentNode.insertBefore(img, optionsEl);
+        }
+
+        question.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.textContent = option;
+            button.classList.add('option');
+            button.addEventListener('click', () => selectOption(button, index));
+            optionsEl.appendChild(button);
+        });
+
+        nextBtn.style.display = 'none';
+        timeLeft = 20 + bonusTime;
+        bonusTime = 0;
+        if (timer) clearInterval(timer);
+        startTimer();
+        updateProgress();
+    }
+
+    function selectOption(selectedButton, optionIndex) {
+        const question = quizData[currentQuestion];
+        const isCorrect = optionIndex === question.correct;
+        const buttons = optionsEl.getElementsByClassName('option');
+
+        Array.from(buttons).forEach((btn, i) => {
+            btn.disabled = true;
+            const icon = document.createElement('i');
+            icon.classList.add('fas', 'ms-2');
+            if (i === question.correct) {
+                btn.classList.add('correct');
+                icon.classList.add('fa-check-circle', 'text-success');
+                btn.appendChild(icon);
+            }
+            if (i === optionIndex && !isCorrect) {
+                btn.classList.add('incorrect');
+                icon.classList.add('fa-times-circle', 'text-danger');
+                btn.appendChild(icon);
+            }
+        });
+
+        selectedButton.classList.add('selected');
+        clearInterval(timer);
+        nextBtn.style.display = 'block';
+
+        if (isCorrect) {
+            score++;
+            bonusTime += 4;
+            if (soundEnabled) hornSound.play();
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: {y: 0.6}
+            });
+            Swal.fire({
+                title: 'Benar!',
+                text: '+3 Detik Bonus!',
+                icon: 'success',
+                showConfirmButton: false,
+                timer: 1500,
+                timerProgressBar: true
+            });
+        } else {
+            if (soundEnabled) ahhSound.play();
+        }
+    }
+
+    function checkAnswer() {
+        const question = quizData[currentQuestion];
+        const buttons = optionsEl.getElementsByClassName('option');
+        Array.from(buttons).forEach((btn, i) => {
+            btn.disabled = true;
+            if (i === question.correct) {
+                btn.classList.add('correct');
+                const icon = document.createElement('i');
+                icon.classList.add('fas', 'fa-check-circle', 'ms-2', 'text-success');
+                btn.appendChild(icon);
+            }
+        });
+        nextBtn.style.display = 'block';
+    }
+
+
+    function startTimer() {
+        timer = setInterval(() => {
+            timeLeft--;
+            timerEl.textContent = `Timer: ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                checkAnswer();
+            }
+        }, 1000);
+    }
+
+    function updateProgress() {
+        const progress = ((currentQuestion + 1) / quizData.length) * 100;
+        progressBar.style.width = `${progress}%`;
+        progressBar.setAttribute('aria-valuenow', progress);
+    }
+
+    function showResults() {
+        quizContainer.innerHTML = `
+        <div class="results">
+          <div class="result-icon">
+            <i class="fas ${score > quizData.length / 2 ? 'fa-trophy text-success' : 'fa-times-circle text-danger'}"></i>
+          </div>
+          <div class="score">Skor kamu: ${score}/${quizData.length}</div>
+          <p>${score > quizData.length / 2 ? 'Kerja bagus!' : 'Yuk coba lagi!'}</p>
+          <button class="btn btn-primary" onclick="location.reload()">Ulangi Kuis</button>
+        </div>
+      `;
+
+        if (score === quizData.length) {
+            victorySound.play();
+            confetti({
+                particleCount: 200,
+                spread: 100,
+                origin: {y: 0.6}
+            });
+            Swal.fire({
+                title: 'Selamat!',
+                text: 'Kamu mendapatkan skor sempurna!',
+                icon: 'success',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true
+            });
+        }
+    }
+
+    nextBtn.addEventListener('click', () => {
+        currentQuestion++;
+        if (currentQuestion < quizData.length) {
+            loadQuestion();
+        } else {
+            showResults();
+        }
+    });
+</script>
+</body>
+</html>
